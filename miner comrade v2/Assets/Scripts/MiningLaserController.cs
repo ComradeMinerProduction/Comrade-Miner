@@ -12,6 +12,7 @@ public class MiningLaserController : MonoBehaviour
     //public int damagePerShot = 20;
     public float timeBetweenBullets = 0.15f;
     public int range = 100;
+    public float laserHeight;
 
     float timer;
     Ray laserRay;
@@ -33,24 +34,26 @@ public class MiningLaserController : MonoBehaviour
         laserLine = GetComponent<LineRenderer>();
         //laserAudio = getComponent<AudioSource>();
         //laserLight = getComponent<Light>();
-    
+        timer = Time.time;
+        laserHeight = transform.position.z;
     }
 
     void Update()
     {
 
+        // changing timer to meet convention
+        //timer += Time.deltaTime;
 
-        timer += Time.deltaTime;
-
-        if (Input.GetButton ("Fire1") && timer >= timeBetweenBullets)
+        if (Input.GetButton ("Fire1") && Time.time >= (timeBetweenBullets + timer))
         {
+            timer = Time.time;
             Shoot();
         }
         
-        else
-        {
-            DisableEffects();
-        }
+        //else
+        //{
+        //    DisableEffects();
+        //}
         
 
       //  if (timer >= timeBetweenBullets * effectsDisplaytime)
@@ -67,13 +70,21 @@ public class MiningLaserController : MonoBehaviour
 
     void Shoot()
     {
-        timer = 0f;
+
+        //  laserRay is the ScreenpointToRay for the mouse input
+        laserRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+        dir = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        // creates a hit from what the mouse clicked on / above
+        RaycastHit2D hit = Physics2D.Raycast(laserRay.origin, laserRay.direction);
+
+        //timer = 0f;
         //laserAudio.Play();
 
         //laserLight.enabled = true;
 
-        laserParticles.Stop();
-        laserParticles.Play();
+        //laserParticles.Stop();
+        //laserParticles.Play();
 
         laserLine.enabled = true;
 
@@ -91,16 +102,30 @@ public class MiningLaserController : MonoBehaviour
         laserRay.direction = newDir;
         */
 
-       laserRay = Camera.main.ScreenPointToRay(Input.mousePosition);
         
+
         
+        if (hit.collider != null && !hit.collider.CompareTag("Player"))
+        {
+            laserLine.SetPosition(1, new Vector3(hit.point.x, hit.point.y, laserHeight));
+        } else
+        {
+            Vector2 missDir = new Vector2(dir.x - transform.position.x, dir.y - transform.position.y);
+            laserLine.SetPosition(1, new Vector3(missDir.x * 10 + transform.position.x,
+                missDir.y * 10 + transform.position.y, laserHeight));
+        }
  
 
 
 
-        Debug.DrawRay(laserRay.origin, laserRay.direction * range, Color.green);
+        // Debug.DrawRay(laserRay.origin, Vector3.forward, Color.green, 2.0f);
 
-        laserLine.SetPosition(1, (laserRay.origin + laserRay.direction * range));
+
+        // deactivate laser after time
+        StartCoroutine(LaserActiveTimer());
+
+
+        //laserLine.SetPosition(1, (laserRay.origin + laserRay.direction * range));
         //transform.forward;
 
         /*
@@ -125,6 +150,11 @@ public class MiningLaserController : MonoBehaviour
         //}
 
     */
+    }
+    IEnumerator LaserActiveTimer()
+    {
+        yield return new WaitForSeconds(0.1f);
+        DisableEffects();
     }
 }
 

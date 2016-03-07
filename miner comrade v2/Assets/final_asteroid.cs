@@ -7,7 +7,7 @@ public class final_asteroid : MonoBehaviour {
 
 	public Rigidbody asteroid1prefab;
 
-	public Rigidbody2D asteroidprefab;
+	public Rigidbody asteroidprefab;
 
 	public Rigidbody2D oreprefab;
 
@@ -17,24 +17,29 @@ public class final_asteroid : MonoBehaviour {
 
 	void Update ()
 	{
-
+        //  this function should be changed to trigger or collision
         if (Input.GetButton("Fire1"))
         {
             // (Input.GetButtonDown("Fire1")) {
             RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
             if (hit.collider != null)
+            {
                 if (hit.collider.gameObject == gameObject)
-                 health -= 10;
-                 } 
-	        	else if (health < 10) {
-                 Destroy(gameObject);
-                }
+                    health -= 10;
+            }
+            else if (health < 10)
+            {
+                Destroy(gameObject);
+            }
+        }
 
 
-
+        // This needs to be moved out of update, update should not be used to check somethings value other than
+        // for player input  ...   example, the broken refernce here has 150 exceptions for a single click
         if (health < 10)
         {
-            Instantiate(oreprefab, asteroidprefab.transform.position, asteroidprefab.transform.rotation);
+            // dropped this for the time being until the oreprefab gets discovered
+            // Instantiate(oreprefab, asteroidprefab.transform.position, asteroidprefab.transform.rotation);
             Destroy(gameObject);
         }
 
@@ -42,7 +47,7 @@ public class final_asteroid : MonoBehaviour {
         {
             for (int i = 0; i < numberofObjects; i++)
             {
-                Instantiate(asteroid1prefab, asteroidprefab.transform.position, asteroidprefab.transform.rotation);
+                //Instantiate(asteroid1prefab, asteroidprefab.transform.position, asteroidprefab.transform.rotation);
             }
             DestroyImmediate(asteroidprefab, true);
             
