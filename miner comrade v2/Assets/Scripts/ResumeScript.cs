@@ -5,6 +5,13 @@ using UnityEngine.UI;
 
 public class ResumeScript : MonoBehaviour {
 
+    public float minZoom;           // min for camera zoom
+    public float maxZoom;           // max for camera zoom
+    public float zoomSpeed;         // how fast the zoom moves
+    private float currentZoom;      // current camera distance from player
+
+
+    //  static references to other gameObjects and player
     public GameObject ConsoleUI;
     public GameObject RedStarContent;
     public GameObject SystemMapContent;
@@ -12,18 +19,19 @@ public class ResumeScript : MonoBehaviour {
     private GameObject currentObject;
     private GameObject previousObject;
     private GameObject playerShip;
-    CollisionController colScript;
+    private CollisionController colScript;
+    private GameObject mainCamera;
     public GameObject warpVector;
     public GameObject warpButton;
 
     public GameObject notifierText;
     private Text notification;
 
-    private bool paused = false;
+    private bool paused = false;            //  Is the game paused, sets timeScale to 0;
 
     void Start()
     {
-        playerShip = GameObject.Find("playerShip");
+        playerShip = GameObject.Find("PlayerShip");
         ConsoleUI.SetActive(false);
         OptionsContent.SetActive(false);
         SystemMapContent.SetActive(false);
@@ -33,16 +41,24 @@ public class ResumeScript : MonoBehaviour {
         warpButton.SetActive(false);
         notification = notifierText.GetComponent<Text>();
         notifierText.SetActive(false);
-
-
-
-
+        mainCamera = playerShip.GetComponentInChildren<Camera>().gameObject;
+        currentZoom = mainCamera.GetComponent<Camera>().orthographicSize;
 
     }
 
     void Update()
     {
-        
+
+        //  mousewheel zoom input
+        float zoomChange = Input.GetAxis("Mouse ScrollWheel");
+        currentZoom -= zoomChange * zoomSpeed;
+        currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
+        //  mousewheel moves camera
+        if (zoomChange != 0)
+        {
+            mainCamera.GetComponent<Camera>().orthographicSize = currentZoom;
+        }
+
         if (Input.GetButtonDown("Console"))
         {
             if (paused == true)
@@ -76,14 +92,16 @@ public class ResumeScript : MonoBehaviour {
 
     public void Restart()
     {
-        Application.LoadLevel("baseScreen");
+        SceneManager.LoadScene("baseScreen");
+        //Application.LoadLevel("baseScreen");
     }
 
     public void MainMenu()
     {
         //SceneManager.LoadScene(SceneManager get scene at 0)
         warpButton.SetActive(false);
-        Application.LoadLevel("StartScreen");
+        SceneManager.LoadScene("StartScreen");
+        //Application.LoadLevel("StartScreen");
     }
 
     public void Quit()
@@ -94,6 +112,7 @@ public class ResumeScript : MonoBehaviour {
 
     public void RedStar()
     {
+        // This previousObject / currentObject  looks like it needs a static controller or a singleton
         previousObject = currentObject;
         currentObject = RedStarContent;
         warpButton.SetActive(false);
