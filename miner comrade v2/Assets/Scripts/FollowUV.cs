@@ -15,10 +15,13 @@ public class FollowUV : MonoBehaviour {
 
     // Use this for initialization
     void Start () {
-	
+        Debug.Log(gameObject.name + " is on a script that needs optimized");
 	}
 	
-	// Update is called once per frame
+	// this update function has been replaced by the 3D skybox feature
+    // also if there is still interest in using this script,
+    // please switch the mr to be called in start and optimize the use 
+    // of update to a coroutine
 	void Update () {
         MeshRenderer mr = GetComponent<MeshRenderer>();
         //grabs first material in mesh renderers array

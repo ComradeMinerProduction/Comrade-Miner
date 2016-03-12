@@ -50,16 +50,6 @@ public class MiningLaserController : MonoBehaviour
             Shoot();
         }
         
-        //else
-        //{
-        //    DisableEffects();
-        //}
-        
-
-      //  if (timer >= timeBetweenBullets * effectsDisplaytime)
-      //  {
-       //     DisableEffects();
-       // }
     }
 
     public void DisableEffects()
