@@ -28,14 +28,17 @@ public class DrawLineScript : MonoBehaviour {
 	}
 
     // Update is called once per frame
-    void Update()
-    {
-        lineRenderer.SetPosition(0, origin.position);
-        lineRenderer.SetPosition(1, Input.mousePosition);
-        dist = 25f;
+    
+    //removed this update to speed up gameplay
+
+    //void Update()
+    //{
+    //    lineRenderer.SetPosition(0, origin.position);
+    //    lineRenderer.SetPosition(1, Input.mousePosition);
+    //    dist = 25f;
 
 
 
 
-    }   
+    //}   
 }

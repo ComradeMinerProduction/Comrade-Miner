@@ -13,6 +13,9 @@ public class SceneFade : MonoBehaviour {
     private float alpha = 1.0f; //The textures alpha
     private int fadeDir = -1; //The direction to fade in
 
+
+    // onGUI will be depricated soon, This is better put under post 4.6 GUI controls with animations
+    // also the animation for this would require no code / script.
     void OnGUI ()
     {
         alpha += fadeDir * fadeSpeed * Time.deltaTime;

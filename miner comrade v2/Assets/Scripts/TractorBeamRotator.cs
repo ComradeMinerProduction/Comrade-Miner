@@ -25,6 +25,7 @@ public class TractorBeamRotator : MonoBehaviour
         {
             beam.Play();
             ores = GameObject.FindGameObjectsWithTag("ore");
+            // need to turn this into one time per button down
             List<GameObject> oresToMine = getOresToMine(ores);
             
             foreach (GameObject ore in oresToMine)

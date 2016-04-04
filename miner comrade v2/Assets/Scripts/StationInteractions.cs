@@ -40,16 +40,15 @@ public class StationInteractions : MonoBehaviour {
         item2.SetActive(false);
         item1Label.SetActive(false);
         item2Label.SetActive(false);
-
+        UpdateOre();
 
 
 
     }
 	
-	// Update is called once per frame
-	void Update () {
-         oreUnits.text = "You have " + playerStats.currentCargo + "Units of Ore";
 	
+	void UpdateOre () {
+         oreUnits.text = "You have " + playerStats.currentCargo + "Units of Ore";
 	}
 
 
@@ -58,6 +57,7 @@ public class StationInteractions : MonoBehaviour {
     {
         playerStats.credits += (oreSellPrice * playerStats.currentCargo);
         playerStats.currentCargo = 0;
+        UpdateOre();
     }
 
 
@@ -75,6 +75,7 @@ public class StationInteractions : MonoBehaviour {
             print("You Have bought Item1!");
             playerEquip.tractorBeamOwned = true;
             playerStats.credits -= 5;
+            UpdateOre();
 
         } else
         {
@@ -89,6 +90,7 @@ public class StationInteractions : MonoBehaviour {
             print("You have bought Item2!");
             playerEquip.laserPower += 5;
             playerStats.credits -= 10;
+            UpdateOre();
         } else
         {
             print("Not Enough money!");
@@ -107,7 +109,7 @@ public class StationInteractions : MonoBehaviour {
             item2.SetActive(false);
             item1Label.SetActive(false);
             item2Label.SetActive(false);
-
+            UpdateOre();
         } else
         {
             inStore = true;
@@ -119,6 +121,7 @@ public class StationInteractions : MonoBehaviour {
             item2.SetActive(true);
             item1Label.SetActive(true);
             item2Label.SetActive(true);
+            UpdateOre();
         }
          
     }
