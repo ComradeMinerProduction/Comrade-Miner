@@ -19,7 +19,7 @@ public class MiningLaserController : MonoBehaviour
     RaycastHit laserHit;
     ParticleSystem laserParticles;
     LineRenderer laserLine;
-    //AudioSource laserAudio;
+    AudioSource laserAudio;
     //Light laserLight
     float effectsDisplayTime = 0.2f;
     public float dirX;
@@ -32,7 +32,7 @@ public class MiningLaserController : MonoBehaviour
     {
         laserParticles = GetComponent<ParticleSystem>();
         laserLine = GetComponent<LineRenderer>();
-        //laserAudio = getComponent<AudioSource>();
+        laserAudio = GetComponent<AudioSource>();
         //laserLight = getComponent<Light>();
         timer = Time.time;
         laserHeight = transform.position.z;
@@ -69,7 +69,7 @@ public class MiningLaserController : MonoBehaviour
         RaycastHit2D hit = Physics2D.Raycast(laserRay.origin, laserRay.direction);
 
         //timer = 0f;
-        //laserAudio.Play();
+        laserAudio.Play();
 
         //laserLight.enabled = true;
 
