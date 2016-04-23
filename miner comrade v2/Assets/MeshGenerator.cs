@@ -185,9 +185,9 @@ public class MeshGenerator : MonoBehaviour {
             {
                 for (int y = 0; y < nodeCountY; y++)
                 {
-                    Vector3 pos = new Vector3(-mapWidth + x * squareSize + squareSize / 2f, 0,
+                    Vector3 pos = new Vector3(-mapWidth + x * squareSize + squareSize / 2f, map[x,y],
                         -mapHeight + y * squareSize + squareSize / 2f);
-                    controlNode[x, y] = new ControlNode(map[x, y] == 1, pos, squareSize);
+                    controlNode[x, y] = new ControlNode(map[x, y] >= 1, pos, squareSize);
                 }
             }
             squares = new Square[nodeCountX - 1, nodeCountY - 1];
