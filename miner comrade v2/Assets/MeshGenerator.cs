@@ -5,8 +5,11 @@ using System.Collections.Generic;
 public class MeshGenerator : MonoBehaviour {
 
     public SquareGrid squareGrid;
+    public SquareGrid negSquareGrid;
     public List<int> triangles;
     public List<Vector3> vertices;
+
+    // Dictionary<int,string> SqaureLib = new Dictionary<int,string>();
 
     public void GenerateMesh(int[,] map, float squareSize)
     {
@@ -14,13 +17,24 @@ public class MeshGenerator : MonoBehaviour {
         triangles = new List<int>();
         vertices = new List<Vector3>();
 
-        squareGrid = new SquareGrid(map, squareSize);
+        int[,] negMap = CreateNegativeMap(map);
 
+        negSquareGrid = new SquareGrid(negMap, squareSize);
+
+        squareGrid = new SquareGrid(map, squareSize);
+        
         for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
         {
             for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
             {
                 TriangulateSquare(squareGrid.squares[x, y]);
+            }
+        }
+        for (int x = negSquareGrid.squares.GetLength(0) - 1; x >= 0; x--)
+        {
+            for (int y = negSquareGrid.squares.GetLength(1) - 1; y >= 0; y--)
+            {
+                TriangulateRevSquare(negSquareGrid.squares[x, y]);
             }
         }
 
@@ -33,7 +47,46 @@ public class MeshGenerator : MonoBehaviour {
 
     }
 
+    public void ClearMesh()
+    {
+        Mesh mesh = new Mesh();
+        GetComponent<MeshFilter>().mesh = mesh;
+    }
 
+    public int[,] CreateNegativeMap(int[,] map)
+    {
+        int tempX = map.GetLength(0);
+        int tempY = map.GetLength(1);
+        int[,] negMap = new int[tempX,tempY];
+        for (int x = 0; x < tempX; x++)
+        {
+            for (int y = 0; y < tempY; y++) {
+                if (map[x,y] != 0){
+                    negMap[x,y] = -map[x,y];
+                }
+            }
+        }
+        return negMap;
+    }
+
+
+    // this may need to be run in the generator
+    int GetCongruentSquare(int[,] map)
+    {
+        int linkedSquares = 0;
+        for (int x = 0; x < map.GetLength(0); x++)
+        { 
+            for (int y = 0; x < map.GetLength(1); y++)
+            {
+                // find nodes going left and nodes going right
+                // put total X + total Y into Largest value if
+                // x + y is greater than previous or the starting value
+                // reroll the map if there is no value greater than min size
+            }
+        }
+        
+        return linkedSquares;
+    } 
 
     void TriangulateSquare(Square square)
     {
@@ -102,6 +155,73 @@ public class MeshGenerator : MonoBehaviour {
         }
     }
 
+    void TriangulateRevSquare(Square square)
+    {
+        switch (square.configuration)
+        {
+            case 0:
+                break;
+
+            // 1 points:
+            case 1:
+                MeshFromPoints(square.middleBottom, square.middleLeft, square.bottomLeft);
+                break;
+            case 2:
+                MeshFromPoints(square.middleRight, square.middleBottom, square.bottomRight);
+                break;
+            case 4:
+                MeshFromPoints(square.middleTop, square.middleRight, square.topRight);
+                break;
+            case 8:
+                MeshFromPoints(square.topLeft, square.middleLeft, square.middleTop);
+                break;
+
+            // 2 points:
+            case 3:
+                MeshFromPoints(square.middleRight, square.middleLeft, square.bottomLeft, square.bottomRight);
+                break;
+            case 6:
+                MeshFromPoints(square.middleTop, square.middleBottom, square.bottomRight, square.topRight);
+                break;
+            case 9:
+                MeshFromPoints(square.topLeft, square.bottomLeft, square.middleBottom, square.middleTop);
+                break;
+            case 12:
+                MeshFromPoints(square.topLeft, square.middleLeft, square.middleRight, square.topRight);
+                break;
+            case 5:
+                MeshFromPoints(square.middleTop, square.middleLeft, square.bottomLeft, square.middleBottom, square.middleRight, square.topRight);
+                break;
+            case 10:
+                MeshFromPoints(square.topLeft, square.middleLeft, square.middleBottom, square.bottomRight, square.middleRight, square.middleTop);
+                break;
+
+            // 3 point:
+            case 7:
+                MeshFromPoints(square.middleTop, square.middleLeft, square.bottomLeft, square.bottomRight, square.topRight);
+                break;
+            case 11:
+                MeshFromPoints(square.topLeft, square.bottomLeft, square.bottomRight, square.middleRight, square.middleTop);
+                break;
+            case 13:
+                MeshFromPoints(square.topLeft, square.bottomLeft, square.middleBottom, square.middleRight, square.topRight);
+                break;
+            case 14:
+                MeshFromPoints(square.topLeft, square.middleLeft, square.middleBottom, square.bottomRight, square.topRight);
+                break;
+
+            // 4 point:
+            case 15:
+                MeshFromPoints(square.topRight, square.topLeft, square.bottomLeft, square.bottomRight);
+                break;
+        }
+        if (square.configuration != 0)
+        {
+            /// create a hit box here based on the type of material
+
+        }
+    }
+
     void MeshFromPoints(params Node[] points)
     {
         AssignVertices(points);
@@ -124,6 +244,19 @@ public class MeshGenerator : MonoBehaviour {
             {
                 points[i].vertexIndex = vertices.Count;
                 vertices.Add(points[i].position);
+                //vertices.Add(new Vector3(points[i].position.x, points[i].position.y, -points[i].position.z));
+            }
+        }
+    }
+
+    void AssignNegativeVertices(Node[] points)
+    {
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (points[i].vertexIndex == -1)
+            {
+                points[i].vertexIndex = vertices.Count;
+                vertices.Add(new Vector3(points[i].position.x, points[i].position.y, -points[i].position.z));
             }
         }
     }
@@ -187,7 +320,7 @@ public class MeshGenerator : MonoBehaviour {
                 {
                     Vector3 pos = new Vector3(-mapWidth + x * squareSize + squareSize / 2f, map[x,y],
                         -mapHeight + y * squareSize + squareSize / 2f);
-                    controlNode[x, y] = new ControlNode(map[x, y] >= 1, pos, squareSize);
+                    controlNode[x, y] = new ControlNode(map[x, y] != 0, pos, squareSize);
                 }
             }
             squares = new Square[nodeCountX - 1, nodeCountY - 1];
