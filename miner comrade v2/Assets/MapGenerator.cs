@@ -6,9 +6,12 @@ public class MapGenerator : MonoBehaviour {
 
     public int width;
     public int height;
-    public int z;
+    [Range(0, 10)]
+    public int zThickness;
     public string seed;
     public bool useRandomSeed;
+    public bool GenerateMesh;
+    public bool ShowGizmoDelete;
     private int failCount = 0;
 
     [Range(0,100)]
@@ -35,6 +38,8 @@ public class MapGenerator : MonoBehaviour {
         map = new int[width, height];
         delMap = new int[width, height];
 
+        CameraFocus();
+
         if (meshGen != null)
         {
             ClearMinerals();
@@ -57,15 +62,17 @@ public class MapGenerator : MonoBehaviour {
     }
     public void FinishMap() { 
 
-        for (int i = 1; i < smoothness+1; i++)
+        for (int i = 1; i < zThickness + 1; i++)
         {
             SmoothMapZ(i);
         }
         AverageZ();
 
-        CreateMinerals();
+        if (GenerateMesh)
+            CreateMinerals();
 
-        meshGen.GenerateMesh(map, 1f);
+        if (GenerateMesh)
+            meshGen.GenerateMesh(map, 1f);
 
     }
 
@@ -149,15 +156,25 @@ public class MapGenerator : MonoBehaviour {
 
     void SmoothMapZ(int timeNum)
     {
+        int randZ = 0;
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 int neighbourWallTiles = GetSurroundingWallCount(x, y);
-                if (map[x, y] == 1)
+                if (map[x, y] >= 1)
                 {
-                    if (neighbourWallTiles >= 6)
-                        map[x, y] = Mathf.RoundToInt(Mathf.Clamp((neighbourWallTiles / 4f) + Random.Range(-1, 1), 1, timeNum + 1));
+                    if (neighbourWallTiles == 8)
+                    {
+                        randZ = Mathf.RoundToInt(2 + Random.Range(-1, 2));
+                        //Debug.Log(randZ.ToString() + " : randZ  " + neighbourWallTiles.ToString() + " : wall tiles");
+                        map[x, y] = Mathf.RoundToInt(Mathf.Clamp(randZ, map[x, y], timeNum + 1));
+                    } else if (neighbourWallTiles >= 5)
+                    {
+                        randZ = Mathf.RoundToInt((neighbourWallTiles / 4f) + Random.Range(-1, 2));
+                        //Debug.Log(randZ.ToString() + " : randZ  " + neighbourWallTiles.ToString() + " : wall tiles");
+                        map[x, y] = Mathf.RoundToInt(Mathf.Clamp(randZ, 1, timeNum + 1));
+                    }
                 }
             }
         }
@@ -169,13 +186,17 @@ public class MapGenerator : MonoBehaviour {
         {
             for (int y = 0; y < height; y++)
             {
-                if (map[x, y] == 1)
+                if (map[x, y] >= 1)
                 {
                     int neighbourWallZs = GetSurroundingWallZ(x, y);
                     int neighbourWallTiles = GetSurroundingWallCount(x, y);
-                    if (neighbourWallTiles != 0)
+                    if (neighbourWallTiles == 8)
                     {
-                        map[x, y] = Mathf.RoundToInt(neighbourWallZs / neighbourWallTiles);
+                        map[x,y] = Mathf.RoundToInt(neighbourWallZs / 6);
+                    }
+                    else if (neighbourWallTiles != 0)
+                    {
+                        map[x, y] = Mathf.RoundToInt(neighbourWallZs / (neighbourWallTiles));
                     } else
                     {
                         map[x, y] = 0;
@@ -227,52 +248,63 @@ public class MapGenerator : MonoBehaviour {
     {
         List<List<Coord>> roidRegions = GetRegions(1);
         List<List<Coord>> failedRegions = new List<List<Coord>>();
-        
-        foreach(List<Coord> roidRegion in roidRegions)
+
+        int largestSizeRegion = 0;
+        List<Coord> largestRegion = new List<Coord>();
+
+        foreach (List<Coord> roidRegion in roidRegions)
         {
             if(roidRegion.Count <= minSizeTiles)
             {
                 yield return StartCoroutine(SlowDeletion(roidRegion));
                 failedRegions.Add(roidRegion);
-            }
-        }
-        while(roidRegions.Count > failedRegions.Count + 1)
-        {
-            for (int i = 0; i < roidRegions.Count - 1; i++)
+            }else if (roidRegion.Count < largestSizeRegion)
             {
-                if (roidRegions[i].Count > roidRegions[i + 1].Count)
-                {
-                    yield return StartCoroutine(SlowDeletion(roidRegions[i + 1]));
-                    failedRegions.Add(roidRegions[i+1]);
-                } else
-                {
-                    yield return StartCoroutine(SlowDeletion(roidRegions[i]));
-                    failedRegions.Add(roidRegions[i]);
-                }
+                yield return StartCoroutine(SlowDeletion(roidRegion));
+                failedRegions.Add(roidRegion);
+            } else
+            {
+                yield return StartCoroutine(SlowDeletion(largestRegion));
+                failedRegions.Add(largestRegion);
+                largestSizeRegion = roidRegion.Count;
+                largestRegion = roidRegion;
             }
         }
-        foreach(List<Coord> region in failedRegions)
+        foreach (List<Coord> region in failedRegions)
         {
             roidRegions.Remove(region);
+            // can't do this becuase you can't mod lists when looping them failedRegions.Remove(region);
         }
+        
         if (roidRegions.Count > 1) {
+            // If for some reason there are multiple reasons, this throws an error and escapes
+            Debug.Log("Region Count Error!");
             Debug.Log("Current Regions : " + roidRegions.Count.ToString());
+            Debug.DebugBreak();
         }
         if(roidRegions.Count == 1)
         {
+            // Finish map is here to test the gizmos drawing of deleting the map
+            // this can be moved later when gizmos and the coroutine are no longer needed 
+            failCount = 0;
             FinishMap();
         } else if (failCount < 3)
         {
+            // didn't make a valid asteroid (count of regions < 1)
             failCount++;
             Debug.Log("Failed to generate valid asteroid time : " + failCount.ToString());
-            // Finish map is here to test the gizmos drowing of deleting the map, it should not be here, move it
             GenerateMap();
         } else
         {
-            Debug.Log("Failed to generate valid asteroid with current settings- Change Settings");
+            //This will be thrown if the asteroid fails to have any valid regions 3 times in a row.
+            // pretty much keeps from getting a stackOverflow from the wrong settings getting used.
+            // keep this here, though it would be nice to have a new class for generation that will
+            // calculate the ranges of invalid asteroids from the width height fill percent and smoothness.
+            Debug.Log("Failed to generate valid asteroid with current settings - Change Settings");
         }
     }
 
+    // this is for the gizmo to draw the cubes so that they are visibly erased
     IEnumerator SlowDeletion (List<Coord> roidRegion)
     {
         foreach (Coord tile in roidRegion)
@@ -280,10 +312,14 @@ public class MapGenerator : MonoBehaviour {
             map[tile.tileX, tile.tileY] = 0;
             delMap[tile.tileX, tile.tileY] = 1;
 
-            Debug.Log("deleteing tiles : " + tile.tileX.ToString() + "  " + tile.tileY.ToString());
-            yield return new WaitForSeconds(0.02f);
+            //Debug.Log("deleteing tiles : " + tile.tileX.ToString() + "  " + tile.tileY.ToString());
+            //yield return null;
+            // switch line above with line below to see how gizmo calculates the smaller pieces to delete 
+            if (ShowGizmoDelete)
+                yield return new WaitForSeconds(0.02f);
         }
-        Debug.Log("roid too small - deleted tiles : " + roidRegion.Count.ToString());
+        //Debug.Log("roid too small - deleted tiles : " + roidRegion.Count.ToString());
+        yield return null;
     }
 
     List<List<Coord>> GetRegions(int tileType)
@@ -393,6 +429,21 @@ public class MapGenerator : MonoBehaviour {
                 }
             }
         }
+    }
+    void CameraFocus()
+    {
+        Camera cam = GameObject.FindObjectOfType<Camera>();
+        int pickLarger = 0;
+        if (width >= height)
+        {
+            pickLarger = width;
+        } else
+        {
+            pickLarger = height;
+        }
+        cam.orthographicSize = pickLarger/2;
+        cam.transform.position = new Vector3(-pickLarger / 2, 10f, -pickLarger / 2);
+
     }
 
 }
