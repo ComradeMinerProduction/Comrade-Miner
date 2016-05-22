@@ -19,7 +19,7 @@ public class ResumeScript : MonoBehaviour {
     private GameObject currentObject;
     private GameObject previousObject;
     private GameObject playerShip;
-    private CollisionController colScript;
+    // private CollisionController colScript;
     private GameObject mainCamera;
     public GameObject warpVector;
     public GameObject warpButton;
@@ -37,7 +37,7 @@ public class ResumeScript : MonoBehaviour {
         SystemMapContent.SetActive(false);
         currentObject = RedStarContent;
         previousObject = SystemMapContent;
-        colScript = playerShip.GetComponent<CollisionController>();
+        // colScript = playerShip.GetComponent<CollisionController>()  -  ;
         warpButton.SetActive(false);
         notification = notifierText.GetComponent<Text>();
         notifierText.SetActive(false);

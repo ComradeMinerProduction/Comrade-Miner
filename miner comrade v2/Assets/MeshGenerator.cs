@@ -2,27 +2,149 @@
 using System.Collections;
 using System.Collections.Generic;
 
-public class MeshGenerator : MonoBehaviour {
+public class MeshGenerator : MonoBehaviour
+{
 
     public SquareGrid squareGrid;
     public SquareGrid negSquareGrid;
     public List<int> triangles;
     public List<Vector3> vertices;
+    public List<int[,]> pseudoMap;
 
+    private bool mouseDown;
+    private float roundX;
+    private float roundZ;
+    private int localX;
+    private int localZ;
+    private Vector3 rawMouse;
+    private Queue<int> alterVerts = new Queue<int>();
+    private bool altered = false;
+
+    public int[,] currentMap;
+
+    private Mesh mesh;
+    private MeshCollider MC;
+
+    public void FixedUpdate()
+    {
+        if (Input.GetMouseButton(0) && currentMap != null)
+        {
+            mouseDown = true;
+            rawMouse = Input.mousePosition;
+            rawMouse = Camera.main.ScreenToWorldPoint(rawMouse);
+            roundX = Mathf.Round(rawMouse.x);
+            roundZ = Mathf.Round(rawMouse.z);
+
+            localX = Mathf.RoundToInt(roundX + currentMap.GetLength(0));
+            localZ = Mathf.RoundToInt(roundZ + currentMap.GetLength(1));
+
+            if (localX >= 0 && localX < currentMap.GetLength(0) && localZ >= 0 && localZ < currentMap.GetLength(1))
+            {
+                if (currentMap[localX, localZ] != 0)
+                {
+                    currentMap[localX, localZ] = 0;
+                }
+            }
+            foreach(Vector3 vert in vertices)
+            {
+                if (vert.x == roundX || vert.x == roundX + .5f)
+                {
+                    if (vert.z == roundZ || vert.z == roundZ + .5f)
+                    {
+                        if (vert.y != 0)
+                            alterVerts.Enqueue(vertices.IndexOf(vert));
+                    }
+                }
+            }
+
+            //GetTriFromRay();
+
+        } else
+        {
+            mouseDown = false;
+        }
+        while (alterVerts.Count > 0  && !altered)
+        {
+            int alterVert = alterVerts.Dequeue();
+            if (vertices[alterVert] != null)
+                vertices[alterVert] = new Vector3(vertices[alterVert].x, 0, vertices[alterVert].z);
+            // add this to a que so that it doesn't get called five times in a row.
+            //GetTriangleFromVertex(alterVert);
+            //triangles.RemoveAll(delegate (int i) {return i == alterVert;});
+            altered = true;
+        }
+        if (altered)
+        {
+            mesh.vertices = vertices.ToArray();
+            //mesh.triangles = triangles.ToArray();
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            
+            // Below is the current working version of the deletable roid
+            // There could be a better way of doing this, as this 'feels' like
+            // a really expensive way of changing the object
+            GenerateMesh(currentMap, 1);
+
+            // alternativly the mesh could be checked for triangles where the verticies all go to zero
+            // this would ensure flat edges, for now it still leaves one up high without a wall function
+
+        }
+        altered = false;
+        /// there is another way to do this - using raycast to get the triangles, four of them around the point
+        
+    }
+
+    void GetTriangleFromVertex(int target)
+    {
+        int iTwo = -1;
+        int iThree = -1;
+        Queue<int[]> TriQue = new Queue<int[]>();
+        for (int i = 0; i < triangles.Count; i += 3)
+        {
+            iTwo = i + 1;
+            iThree = i + 2;
+            if (i == target || iTwo == target || iThree == target)
+            {
+                int[] j = { i, iTwo, iThree };
+                TriQue.Enqueue(j);
+            }
+        }
+        while(TriQue.Count > 0)
+        {
+            int[] i = TriQue.Dequeue();
+            Debug.Log("Looking for triangle : " + i[0] + " " + i[1] + " " + i[2]);
+            triangles.Remove(i[0]);
+            triangles.Remove(i[1]);
+            triangles.Remove(i[2]);
+        }
+    }
+
+    void GetTriFromRay()
+    {
+        RaycastHit hit;
+        Debug.DrawRay(new Vector3(roundX, 10f, roundZ), Vector3.down * 10, Color.green, 2.0f);
+        if (Physics.Raycast(new Vector3(roundX, 10f, roundZ), Vector3.down * 10, out hit))
+        {
+            Debug.Log("hit a mesh");
+            int triIndex = hit.triangleIndex;
+            Debug.Log(mesh.triangles[triIndex]);
+        }
+        //Debug.Log("Mouse Position : " + roundX.ToString() + "  " + roundZ.ToString());
+    }
     // Dictionary<int,string> SqaureLib = new Dictionary<int,string>();
 
-    public void GenerateMesh(int[,] map, float squareSize)
+    public void OriginateMesh(int[,] map, float squareSize)
     {
-
         triangles = new List<int>();
         vertices = new List<Vector3>();
+        currentMap = CopyMap(map);
 
         int[,] negMap = CreateNegativeMap(map);
 
         negSquareGrid = new SquareGrid(negMap, squareSize);
 
         squareGrid = new SquareGrid(map, squareSize);
-        
+
         for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
         {
             for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
@@ -38,31 +160,89 @@ public class MeshGenerator : MonoBehaviour {
             }
         }
 
-        Mesh mesh = new Mesh();
+        mesh = new Mesh();
+        GetComponent<MeshFilter>().mesh = mesh;
+
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+    }
+
+    public void GenerateMesh(int[,] map, float squareSize)
+    {
+
+        triangles = new List<int>();
+        vertices = new List<Vector3>();
+
+        int[,] negMap = CreateNegativeMap(map);
+
+        negSquareGrid = new SquareGrid(negMap, squareSize);
+
+        squareGrid = new SquareGrid(map, squareSize);
+
+        for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
+        {
+            for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
+            {
+                TriangulateSquare(squareGrid.squares[x, y]);
+            }
+        }
+        for (int x = negSquareGrid.squares.GetLength(0) - 1; x >= 0; x--)
+        {
+            for (int y = negSquareGrid.squares.GetLength(1) - 1; y >= 0; y--)
+            {
+                TriangulateRevSquare(negSquareGrid.squares[x, y]);
+            }
+        }
+
+        mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
 
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
         mesh.RecalculateNormals();
 
+
+        // This goes with getTrisFromRay()
+        // found to be excessivly expensive - though may be neat to learn from
+        //MC = transform.gameObject.AddComponent<MeshCollider>();
+        //MC.sharedMesh = mesh;
+
     }
 
     public void ClearMesh()
     {
-        Mesh mesh = new Mesh();
+        mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
+    }
+
+    int[,] CopyMap(int[,] map)
+    {
+        int tempX = map.GetLength(0);
+        int tempY = map.GetLength(1);
+        int[,] mapCopy = new int[tempX, tempY];
+        for (int x = 0; x < tempX; x++)
+        {
+            for (int y = 0; y < tempY; y++)
+            {
+                mapCopy[x, y] = map[x, y];
+            }
+        }
+        return mapCopy;
     }
 
     public int[,] CreateNegativeMap(int[,] map)
     {
         int tempX = map.GetLength(0);
         int tempY = map.GetLength(1);
-        int[,] negMap = new int[tempX,tempY];
+        int[,] negMap = new int[tempX, tempY];
         for (int x = 0; x < tempX; x++)
         {
-            for (int y = 0; y < tempY; y++) {
-                if (map[x,y] != 0){
-                    negMap[x,y] = -map[x,y];
+            for (int y = 0; y < tempY; y++)
+            {
+                if (map[x, y] != 0)
+                {
+                    negMap[x, y] = -map[x, y];
                 }
             }
         }
@@ -75,7 +255,7 @@ public class MeshGenerator : MonoBehaviour {
     {
         int linkedSquares = 0;
         for (int x = 0; x < map.GetLength(0); x++)
-        { 
+        {
             for (int y = 0; x < map.GetLength(1); y++)
             {
                 // find nodes going left and nodes going right
@@ -84,9 +264,9 @@ public class MeshGenerator : MonoBehaviour {
                 // reroll the map if there is no value greater than min size
             }
         }
-        
+
         return linkedSquares;
-    } 
+    }
 
     void TriangulateSquare(Square square)
     {
@@ -148,10 +328,10 @@ public class MeshGenerator : MonoBehaviour {
                 MeshFromPoints(square.topLeft, square.topRight, square.bottomRight, square.bottomLeft);
                 break;
         }
-        if(square.configuration != 0)
+        if (square.configuration != 0)
         {
             /// create a hit box here based on the type of material
-            
+
         }
     }
 
@@ -268,8 +448,17 @@ public class MeshGenerator : MonoBehaviour {
         triangles.Add(c.vertexIndex);
     }
 
-    //void OnDrawGizmos()
-    //{
+    void OnDrawGizmos()
+    {
+        if (mouseDown)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawCube(new Vector3(roundX + .5f, 1, roundZ + .5f), Vector3.one);
+        } else
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawCube(new Vector3(roundX + .5f, 1, roundZ + .5f), Vector3.one);
+        }
     //    if (squareGrid != null)
     //    {
     //        for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
@@ -299,7 +488,7 @@ public class MeshGenerator : MonoBehaviour {
     //            }
     //        }
     //    }
-    //}
+    }
 
     public class SquareGrid
     {
@@ -318,7 +507,7 @@ public class MeshGenerator : MonoBehaviour {
             {
                 for (int y = 0; y < nodeCountY; y++)
                 {
-                    Vector3 pos = new Vector3(-mapWidth + x * squareSize + squareSize / 2f, map[x,y],
+                    Vector3 pos = new Vector3(-mapWidth + x * squareSize + squareSize / 2f, map[x, y],
                         -mapHeight + y * squareSize + squareSize / 2f);
                     controlNode[x, y] = new ControlNode(map[x, y] != 0, pos, squareSize);
                 }
@@ -364,12 +553,12 @@ public class MeshGenerator : MonoBehaviour {
         }
     }
 
-	public class Node
+    public class Node
     {
         public Vector3 position;
         public int vertexIndex = -1;
 
-        public Node (Vector3 _pos)
+        public Node(Vector3 _pos)
         {
             position = _pos;
         }

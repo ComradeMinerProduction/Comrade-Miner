@@ -12,6 +12,7 @@ public class MapGenerator : MonoBehaviour {
     public bool useRandomSeed;
     public bool GenerateMesh;
     public bool ShowGizmoDelete;
+    public bool ShowGizmos;
     private int failCount = 0;
 
     [Range(0,100)]
@@ -72,7 +73,7 @@ public class MapGenerator : MonoBehaviour {
             CreateMinerals();
 
         if (GenerateMesh)
-            meshGen.GenerateMesh(map, 1f);
+            meshGen.OriginateMesh(map, 1f);
 
     }
 
@@ -409,7 +410,7 @@ public class MapGenerator : MonoBehaviour {
 
     void OnDrawGizmos()
     {
-        if (map != null)
+        if (map != null  &&  ShowGizmos)
         {
             for (int x = 0; x < width; x++)
             {

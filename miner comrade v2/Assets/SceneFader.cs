@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class SceneFader : MonoBehaviour {
 
@@ -8,6 +9,6 @@ public class SceneFader : MonoBehaviour {
     {
         float fadeTime = GameObject.Find("GameManager").GetComponent<SceneFade>().BeginFade(1);
         yield return new WaitForSeconds(fadeTime);
-        Application.LoadLevel(Application.loadedLevel - 1);
+        SceneManager.LoadScene(SceneManager.GetSceneAt(0).ToString());
     }
 }

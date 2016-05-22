@@ -17,11 +17,11 @@ public class MiningLaserController : MonoBehaviour
     float timer;
     Ray laserRay;
     RaycastHit laserHit;
-    ParticleSystem laserParticles;
+    //ParticleSystem laserParticles  -  temporary deactivation for code warnings;
     LineRenderer laserLine;
     AudioSource laserAudio;
     //Light laserLight
-    float effectsDisplayTime = 0.2f;
+    // float effectsDisplayTime = 0.2f  -  temporary deactivation for code warnings;
     public float dirX;
     public float dirY;
     public Vector2 dir;
@@ -30,7 +30,7 @@ public class MiningLaserController : MonoBehaviour
 
     void Start()
     {
-        laserParticles = GetComponent<ParticleSystem>();
+        // laserParticles = GetComponent<ParticleSystem>();
         laserLine = GetComponent<LineRenderer>();
         laserAudio = GetComponent<AudioSource>();
         //laserLight = getComponent<Light>();

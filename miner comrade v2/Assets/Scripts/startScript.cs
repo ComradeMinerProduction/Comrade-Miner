@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class startScript : MonoBehaviour
 {
@@ -35,7 +36,7 @@ public class startScript : MonoBehaviour
 
     public void StartPress()
     {
-        Application.LoadLevel (1);
+        SceneManager.LoadScene(SceneManager.GetSceneAt(1).ToString());
     }
 
     public void ExitGame()
