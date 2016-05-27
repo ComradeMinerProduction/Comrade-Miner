@@ -27,13 +27,17 @@ public class MapGenerator : MonoBehaviour {
     public int minSizeTiles;
 
     public GameObject tempMineral;
-    List<GameObject> minerals;
+    List<Mineral> minerals;
 
     MeshGenerator meshGen;
+    DisplayController dispCont;
 
     int[,] map;
     //this is a temp object for gizmos
     int[,] delMap;
+    // Minerals need a specific place, copying the map will work, but better to make a class for them
+    public int[,] mineralMap;
+
 
     public void GenerateMap() {
         map = new int[width, height];
@@ -49,6 +53,7 @@ public class MapGenerator : MonoBehaviour {
         else
         {
             meshGen = GetComponent<MeshGenerator>();
+            dispCont = GameObject.FindObjectOfType<DisplayController>();
         }
 
         RandomFillMap();
@@ -83,10 +88,20 @@ public class MapGenerator : MonoBehaviour {
         {
             if (minerals.Count > 0)
             {
-                foreach (GameObject Go in minerals)
+                foreach (Mineral Go in minerals)
                 {
-                    Destroy(Go);
+                    Destroy(Go.ore);
                 }
+            }
+            minerals.Clear();
+        }
+        
+        mineralMap = new int[width, height];
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                mineralMap[x, y] = 0;
             }
         }
     }
@@ -95,9 +110,23 @@ public class MapGenerator : MonoBehaviour {
     {
         // create a code here that looks for and deletes exisiting prefabs
 
-        ClearMinerals();
+        if (minerals != null)
+        {
+            ClearMinerals();
+        }
 
-        minerals = new List<GameObject>();
+        minerals = new List<Mineral>();
+        if (mineralMap == null)
+        {
+            mineralMap = new int[width,height];
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    mineralMap[x, y] = 0;
+                }
+            }
+        }
 
         System.Random pseudoRandomNum = new System.Random(seed.GetHashCode());
         for (int x = 0; x < width; x++)
@@ -110,10 +139,31 @@ public class MapGenerator : MonoBehaviour {
                     {
                         GameObject ore = Instantiate(tempMineral, new Vector3(-width + x + .5f, map[x, y], -height + y + .5f), Quaternion.identity) as GameObject;
                         ore.transform.localScale = new Vector3(Random.Range(0.5f, 2), Random.Range(0.5f, 2), Random.Range(0.5f, 2));
-                        minerals.Add(ore);
+                        minerals.Add(new Mineral(x,y,map[x,y], ore));
+                        mineralMap[x, y] = 1;
                     }
                 }
             }
+        }
+    }
+
+    public void MineralBreak(int x, int y)
+    {
+        Mineral listIndex = null;
+        foreach(Mineral m in minerals)
+        {
+            //Debug.Log("called for break at X : " + x + " Y : " + y);
+            //Debug.Log("mineral X : " + m.x + " mineral Y : " + m.y);
+            if (m.x == x && m.y == y)
+            {
+                dispCont.MineralPointsUp(1);
+                listIndex = m;
+                Destroy(m.ore);
+            }
+        }
+        if (listIndex != null)
+        {
+            minerals.Remove(listIndex);
         }
     }
 
@@ -444,6 +494,21 @@ public class MapGenerator : MonoBehaviour {
         }
         cam.orthographicSize = pickLarger/2;
         cam.transform.position = new Vector3(-pickLarger / 2, 10f, -pickLarger / 2);
+
+    }
+    public class Mineral
+    {
+        public int x;
+        public int y;
+        public int oreHeight;
+        public GameObject ore;
+        public Mineral(int xIn, int yIn, int height, GameObject GO )
+        {
+            x = xIn;
+            y = yIn;
+            oreHeight = height;
+            ore = GO;
+        }
 
     }
 

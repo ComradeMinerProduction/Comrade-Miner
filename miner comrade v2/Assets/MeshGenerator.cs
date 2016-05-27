@@ -11,6 +11,10 @@ public class MeshGenerator : MonoBehaviour
     public List<Vector3> vertices;
     public List<int[,]> pseudoMap;
 
+    Dictionary<int, List<Triangle>> triangleDictionary = new Dictionary<int, List<Triangle>>();
+    List<List<int>> outlines = new List<List<int>>();
+    HashSet<int> checkedVertices = new HashSet<int>();
+
     private bool mouseDown;
     private float roundX;
     private float roundZ;
@@ -24,6 +28,7 @@ public class MeshGenerator : MonoBehaviour
 
     private Mesh mesh;
     private MeshCollider MC;
+    private MapGenerator mapGen;
 
     public void FixedUpdate()
     {
@@ -43,9 +48,13 @@ public class MeshGenerator : MonoBehaviour
                 if (currentMap[localX, localZ] != 0)
                 {
                     currentMap[localX, localZ] = 0;
+                    if (mapGen.mineralMap[localX, localZ] == 1)
+                    {
+                        mapGen.MineralBreak(localX, localZ);
+                    }
                 }
             }
-            foreach(Vector3 vert in vertices)
+            foreach (Vector3 vert in vertices)
             {
                 if (vert.x == roundX || vert.x == roundX + .5f)
                 {
@@ -63,12 +72,11 @@ public class MeshGenerator : MonoBehaviour
         {
             mouseDown = false;
         }
-        while (alterVerts.Count > 0  && !altered)
+        while (alterVerts.Count > 0 && !altered)
         {
             int alterVert = alterVerts.Dequeue();
-            if (vertices[alterVert] != null)
+            if (vertices[alterVert] != null  && alterVert < vertices.Count)
                 vertices[alterVert] = new Vector3(vertices[alterVert].x, 0, vertices[alterVert].z);
-            // add this to a que so that it doesn't get called five times in a row.
             //GetTriangleFromVertex(alterVert);
             //triangles.RemoveAll(delegate (int i) {return i == alterVert;});
             altered = true;
@@ -79,7 +87,7 @@ public class MeshGenerator : MonoBehaviour
             //mesh.triangles = triangles.ToArray();
             mesh.RecalculateBounds();
             mesh.RecalculateNormals();
-            
+
             // Below is the current working version of the deletable roid
             // There could be a better way of doing this, as this 'feels' like
             // a really expensive way of changing the object
@@ -91,9 +99,11 @@ public class MeshGenerator : MonoBehaviour
         }
         altered = false;
         /// there is another way to do this - using raycast to get the triangles, four of them around the point
-        
+
     }
 
+    // alternative to this use struct Triangle(int a, b, c);
+    // currently there is a method and a struct for triangle, combine them
     void GetTriangleFromVertex(int target)
     {
         int iTwo = -1;
@@ -109,7 +119,7 @@ public class MeshGenerator : MonoBehaviour
                 TriQue.Enqueue(j);
             }
         }
-        while(TriQue.Count > 0)
+        while (TriQue.Count > 0)
         {
             int[] i = TriQue.Dequeue();
             Debug.Log("Looking for triangle : " + i[0] + " " + i[1] + " " + i[2]);
@@ -117,6 +127,36 @@ public class MeshGenerator : MonoBehaviour
             triangles.Remove(i[1]);
             triangles.Remove(i[2]);
         }
+    }
+
+    struct Triangle{
+        int vertexIndexA;
+        int vertexIndexB;
+        int vertexIndexC;
+        int[] vertices;
+
+        public Triangle(int a, int b, int c)
+        {
+            vertexIndexA = a;
+            vertexIndexB = b;
+            vertexIndexC = c;
+
+            vertices = new int[] { a, b, c };
+        }
+
+        public int this[int i]
+        {
+            get
+            {
+                return vertices[i];
+            }
+        }
+
+        public bool Contains(int vertexIndex)
+        {
+            return vertexIndex == vertexIndexA || vertexIndex == vertexIndexB || vertexIndex == vertexIndexC;
+        }
+
     }
 
     void GetTriFromRay()
@@ -135,6 +175,15 @@ public class MeshGenerator : MonoBehaviour
 
     public void OriginateMesh(int[,] map, float squareSize)
     {
+        if (mapGen == null)
+        {
+            mapGen = gameObject.GetComponent<MapGenerator>();
+        }
+
+        outlines.Clear();
+        checkedVertices.Clear();
+        triangleDictionary.Clear();
+
         triangles = new List<int>();
         vertices = new List<Vector3>();
         currentMap = CopyMap(map);
@@ -160,6 +209,8 @@ public class MeshGenerator : MonoBehaviour
             }
         }
 
+        WeldOutlines();
+
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
 
@@ -170,6 +221,9 @@ public class MeshGenerator : MonoBehaviour
 
     public void GenerateMesh(int[,] map, float squareSize)
     {
+        outlines.Clear();
+        checkedVertices.Clear();
+        triangleDictionary.Clear();
 
         triangles = new List<int>();
         vertices = new List<Vector3>();
@@ -194,6 +248,8 @@ public class MeshGenerator : MonoBehaviour
                 TriangulateRevSquare(negSquareGrid.squares[x, y]);
             }
         }
+
+        WeldOutlines();
 
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
@@ -326,6 +382,10 @@ public class MeshGenerator : MonoBehaviour
             // 4 point:
             case 15:
                 MeshFromPoints(square.topLeft, square.topRight, square.bottomRight, square.bottomLeft);
+                checkedVertices.Add(square.topLeft.vertexIndex);
+                checkedVertices.Add(square.topRight.vertexIndex);
+                checkedVertices.Add(square.bottomRight.vertexIndex);
+                checkedVertices.Add(square.bottomLeft.vertexIndex);
                 break;
         }
         if (square.configuration != 0)
@@ -446,7 +506,123 @@ public class MeshGenerator : MonoBehaviour
         triangles.Add(a.vertexIndex);
         triangles.Add(b.vertexIndex);
         triangles.Add(c.vertexIndex);
+
+        Triangle triangle = new Triangle(a.vertexIndex, b.vertexIndex, c.vertexIndex);
+        AddTriangleToDictionary(a.vertexIndex, triangle);
+        AddTriangleToDictionary(b.vertexIndex, triangle);
+        AddTriangleToDictionary(c.vertexIndex, triangle);
     }
+
+    void AddTriangleToDictionary(int vertexIndexKey, Triangle triangle)
+    {
+        if (triangleDictionary.ContainsKey(vertexIndexKey))
+        {
+            triangleDictionary[vertexIndexKey].Add(triangle);
+        } else
+        {
+            List<Triangle> triangleList = new List<Triangle>();
+            triangleList.Add(triangle);
+            triangleDictionary.Add(vertexIndexKey, triangleList);
+        }
+    }
+
+    void WeldOutlines()
+    {
+        CalculateMeshOutlines();
+
+        foreach(List<int> outline in outlines)
+        {
+            for (int i = 0; i < outline.Count - 1; i++)
+            {
+                if (vertices[outline[i]].y != 0)
+                {
+                    vertices[outline[i]] = new Vector3(vertices[outline[i]].x, 0, vertices[outline[i]].z);
+                    // success!!! Though the outline edge against the right side may come up as missing some times
+                    // investigate this !! 
+                    // TODO : Find a faster way of making mehs gen and outline happen for solid in-game version
+                    //      Fix the map so that it will make the vertexes go to zero after removing some
+                    //      put outline together with the object to make collisions only occur on it
+                }
+            }
+        }
+    }
+
+    bool IsOutlineEdge(int vertexA, int vertexB)
+    {
+        List<Triangle> trianglesContainingVertexA = triangleDictionary[vertexA];
+        int sharedTriangleCount = 0;
+
+        for(int i = 0; i < trianglesContainingVertexA.Count; i++)
+        {
+            if (trianglesContainingVertexA[i].Contains(vertexB))
+            {
+                sharedTriangleCount++;
+                if (sharedTriangleCount > 1)
+                {
+                    break;
+                }
+            }
+        }
+        return sharedTriangleCount == 1;
+    }
+
+    void CalculateMeshOutlines()
+    {
+        for (int vertexIndex = 0; vertexIndex < vertices.Count; vertexIndex++)
+        {
+            if (!checkedVertices.Contains(vertexIndex))
+            {
+                int newOutlineVertex = GetConnectedOutlineVertex(vertexIndex);
+                if (newOutlineVertex != -1)
+                {
+                    checkedVertices.Add(vertexIndex);
+
+                    List<int> newOutline = new List<int>();
+                    newOutline.Add(vertexIndex);
+                    outlines.Add(newOutline);
+                    FollowOutline(newOutlineVertex, outlines.Count - 1);
+                    outlines[outlines.Count - 1].Add(vertexIndex);
+                }
+            }
+        }
+    }
+    
+    void FollowOutline(int vertexIndex, int outlineVertex)
+    {
+        outlines[outlineVertex].Add(vertexIndex);
+        checkedVertices.Add(vertexIndex);
+        int nextVertexIndex = GetConnectedOutlineVertex(vertexIndex);
+
+        if (nextVertexIndex != -1)
+        {
+            FollowOutline(nextVertexIndex, outlineVertex);
+        }
+    }
+
+    int GetConnectedOutlineVertex(int vertexIndex)
+    {
+        List<Triangle> trianglesContainingVertex = triangleDictionary[vertexIndex];
+        for (int i = 0; i < trianglesContainingVertex.Count; i++)
+        {
+            Triangle triangle = trianglesContainingVertex[i];
+
+            for (int j = 0; j < 3; j++)
+            {
+                int vertexB = triangle[j];
+                if (vertexB != vertexIndex && !checkedVertices.Contains(vertexB))
+                {
+                    if (IsOutlineEdge(vertexIndex, vertexB))
+                    {
+                        if (mapGen.ShowGizmos)
+                            Debug.DrawLine(vertices[vertexIndex], vertices[vertexB], Color.green, 2f);
+                        return vertexB;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
 
     void OnDrawGizmos()
     {
