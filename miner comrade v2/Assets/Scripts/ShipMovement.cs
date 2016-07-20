@@ -159,7 +159,7 @@ public class ShipMovement : MonoBehaviour {
             //  starts a 0.2 second timer to stop rotation and movement
             //  This could be an option enabled under options for auto stop
             if (ship.angularVelocity != 0 && !stoppingAng)
-                RotationStop();
+            //    RotationStop();
             if (ship.velocity != Vector2.zero && notMoving)
                 if (!stoppingHor)
                     HorizontalStop();
